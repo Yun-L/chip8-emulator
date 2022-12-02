@@ -1,4 +1,6 @@
-#include <stdio.h>
+#include <cstdio>
+#include <stdint.h>
+#include <string>
 
 int main(int argc, char *argv[])
 {
