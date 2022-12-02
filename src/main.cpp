@@ -24,6 +24,23 @@ uint16_t pc = 0x200;
 uint8_t ram[4096] = {0};
 uint8_t stack[64] = {0};
 
+// TODO: validate, rom is not too big, handle error codes, harden
+void loadProgramToRam() {
+    FILE *pFile;
+    pFile = fopen(INPUT_ROM.c_str(), "r");
+
+    if (pFile == NULL) {
+        return;
+    }
+    printf("file opened: %s\n", INPUT_ROM.c_str());
+
+    std::fseek(pFile, 0, SEEK_END);
+    long int fileNumBytes = std::ftell(pFile);
+    printf("num bytes in file: %ld\n", fileNumBytes);
+    std::rewind(pFile);
+    std::fread(ram + 0x200, sizeof(uint8_t), fileNumBytes, pFile);
+}
+
     printf("test");
     return 0;
 }
