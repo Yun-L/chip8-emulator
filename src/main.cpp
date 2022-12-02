@@ -2,8 +2,6 @@
 #include <stdint.h>
 #include <string>
 
-int main(int argc, char *argv[])
-{
 #define NIBBLE_1(ins) ((uint8_t)(ins >> 12))
 #define NIBBLE_2(ins) ((uint8_t)(ins >> 8) & 0x0F)
 #define NIBBLE_3(ins) ((uint8_t)(ins >> 4) & 0x0F)
@@ -41,6 +39,111 @@ void loadProgramToRam() {
     std::fread(ram + 0x200, sizeof(uint8_t), fileNumBytes, pFile);
 }
 
+int main(int argc, char *argv[]) {
     printf("test");
+
+    uint16_t instruction;
+    int count = 0;
+    loadProgramToRam();
+    while (true) {
+        // read keypad?
+
+        // fetch instruction
+        instruction = ((uint16_t)(ram[pc]) << 8) | ((uint16_t)(ram[pc+1]));
+        pc += 2;
+        count++;
+        // std::printf("%d: %X\n", count, instruction);
+        switch (NIBBLE_1(instruction)) {
+            case 0: {
+                switch (NIBBLE_234(instruction)) {
+                    case 0x0E0: { // CLS
+                        // TODO: clear screen
+                        std::printf("CLS\n");
+                        break;
+                    }
+                    case 0x0EE: { // RET
+                        // TODO: return from subroutine
+                        break;
+                    }
+                    default: {
+                        // TODO: report error, obsolete command
+                    }
+                }
+                break;
+            }
+            case 1: {           // JP addr
+                std::printf("JP addr\n");
+                // TODO: jump to address
+                uint16_t addr = NIBBLE_234(instruction);
+                break;
+            }
+            case 2: {           // CALL addr
+                uint16_t addr = instruction & 0x0FFF;
+                break;
+            }
+            case 3: {           // SE Vx, byte
+                break;
+            }
+            case 4: {           // SNE Vx, byte
+                break;
+            }
+            case 5: {           // SE Vx, Vy
+                break;
+            }
+            case 6: {           // LD Vx, byte
+                std::printf("LD Vx, byte\n");
+                // TODO: set Vx register to byte
+                uint8_t x = NIBBLE_2(instruction);
+                uint8_t val = NIBBLE_34(instruction);
+                break;
+            }
+            case 7: {           // ADD Vx, byte
+                std::printf("ADD Vx, byte\n");
+                // TODO: add value to Vx register
+                uint8_t x = NIBBLE_2(instruction);
+                uint8_t val = NIBBLE_34(instruction);
+                break;
+            }
+            case 8: {           // LD:OR:AND:XOR:ADD:SUB:SHR:SUBN:SHL Vx, Vy
+                std::printf("8\n");
+                break;
+            }
+            case 9: {           // SNE Vx, Vy
+                break;
+            }
+            case 10: {          // LD I, addr
+                std::printf("LD I, addr\n");
+                // TODO: set I register to addr
+                uint16_t val = NIBBLE_234(instruction);
+                break;
+            }
+            case 11: {          // JP V0, addr
+                std::printf("JP V0\n");
+                break;
+            }
+            case 12: {          // RND Vx, byte
+                break;
+            }
+            case 13: {          // DRW Vx, Vy, nibble
+                std::printf("DRW Vx, Vy\n");
+                // TODO: display/draw
+                uint8_t x = NIBBLE_2(instruction);
+                uint8_t y = NIBBLE_3(instruction);
+                uint8_t val = NIBBLE_4(instruction);
+                break;
+            }
+            case 14: {          // SKP:SKNP Vx
+                std::printf("SKP\n");
+                break;
+            }
+            case 15: {          // LD Vx DT: LD Vx, K: LD ST, Vx: ...
+                std::printf("LD F\n");
+                break;
+            }
+            default:
+                break;
+        }
+
+    }
     return 0;
 }
