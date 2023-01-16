@@ -100,8 +100,10 @@ int main(int argc, char *argv[]) {
             case 0x0: {
                 switch (NIBBLE_234(instruction)) {
                     case 0x0E0: { // CLS
-                        // TODO: clear screen
                         std::printf("CLS\n");
+                        for (int i = 0; i < 2048; ++i) {
+                            display[i] = false;
+                        }
                         break;
                     }
                     case 0x0EE: { // RET
