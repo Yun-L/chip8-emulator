@@ -116,10 +116,9 @@ int main(int argc, char *argv[]) {
                 }
                 break;
             }
-                std::printf("JP addr\n");
-                // TODO: jump to address
-                uint16_t addr = NIBBLE_234(instruction);
             case 0x1: {           // JP addr
+                pc = NIBBLE_234(instruction);
+                std::printf("JP addr=0x%X\n", pc);
                 break;
             }
             case 0x2: {           // CALL addr
