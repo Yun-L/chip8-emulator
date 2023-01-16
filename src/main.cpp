@@ -39,6 +39,8 @@ uint8_t ram[4096] = {
     // the rest should be 0 initialized
 };
 uint8_t stack[64] = {0};
+bool display[2048] = {0}; // 64 x 32 bits, 8 x 32 uint8_t's
+
 void writeDisplayStateToFile() {
     FILE *pFile;
     pFile = fopen("display.txt", "w");
