@@ -136,9 +136,9 @@ int main(int argc, char *argv[]) {
             }
             case 0x6: {           // LD Vx, byte
                 std::printf("LD Vx, byte\n");
-                // TODO: set Vx register to byte
                 uint8_t x = NIBBLE_2(instruction);
                 uint8_t val = NIBBLE_34(instruction);
+                registers[x] = val;
                 break;
             }
             case 0x7: {           // ADD Vx, byte
