@@ -168,12 +168,31 @@ int main(int argc, char *argv[]) {
             case 0xC: {          // RND Vx, byte
                 break;
             }
-                std::printf("DRW Vx, Vy\n");
-                // TODO: display/draw
-                uint8_t x = NIBBLE_2(instruction);
-                uint8_t y = NIBBLE_3(instruction);
-                uint8_t val = NIBBLE_4(instruction);
             case 0xD: {          // DRW Vx, Vy, nibble
+                registers[0xF] = 0;
+                uint8_t _x = NIBBLE_2(instruction);
+                uint8_t _y = NIBBLE_3(instruction);
+                uint8_t n = NIBBLE_4(instruction);
+                uint8_t x = registers[_x];
+                uint8_t y = registers[_y];
+                std::printf("DRW x=%d, y=%d, n=%d, i=0x%X ", x, y, n, index);
+                // set vf on collisions
+
+                for (int i = 0; i < n; ++i) {
+                    int disp_index = (y+i)*64 + x;
+                    int sprite_index = index + i;
+                    for (int j = 0; j < 8; ++j) {
+                        int curr_display_bit = display[disp_index + j] ? 1 : 0;
+                        int curr_sprite_bit = (ram[sprite_index] >> (7 - j)) & 1;
+                        if (curr_sprite_bit != curr_display_bit) {
+                            if (curr_display_bit == 1) {
+                                registers[0xF] = 1;
+                            }
+                            display[disp_index + j] = !display[disp_index + j];
+                        }
+                    }
+                }
+                std::printf("VF=%d\n", registers[0xF]);
                 break;
             }
                 std::printf("SKP\n");
