@@ -39,6 +39,27 @@ uint8_t ram[4096] = {
     // the rest should be 0 initialized
 };
 uint8_t stack[64] = {0};
+void writeDisplayStateToFile() {
+    FILE *pFile;
+    pFile = fopen("display.txt", "w");
+
+    if (pFile == NULL) {
+        return;
+    }
+    printf("file opened: display.txt\n");
+
+    for (int i = 0; i < 2048; ++i) {
+        if (i % 64 == 0) {
+            fputc('\n', pFile);
+        }
+
+        if (display[i]) {
+            fputc('X', pFile);
+        } else {
+            fputc('-', pFile);
+        }
+    }
+}
 
 // TODO: validate, rom is not too big, handle error codes, harden
 void loadProgramToRam() {
@@ -163,5 +184,7 @@ int main(int argc, char *argv[]) {
         }
 
     }
+
+    writeDisplayStateToFile();
     return 0;
 }
