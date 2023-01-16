@@ -158,8 +158,7 @@ int main(int argc, char *argv[]) {
             }
             case 0xA: {          // LD I, addr
                 std::printf("LD I, addr\n");
-                // TODO: set I register to addr
-                uint16_t val = NIBBLE_234(instruction);
+                index = NIBBLE_234(instruction);
                 break;
             }
             case 0xB: {          // JP V0, addr
