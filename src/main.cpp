@@ -146,6 +146,7 @@ int main(int argc, char *argv[]) {
                 // TODO: add value to Vx register
                 uint8_t x = NIBBLE_2(instruction);
                 uint8_t val = NIBBLE_34(instruction);
+                registers[x] += val;
                 break;
             }
             case 0x8: {           // LD:OR:AND:XOR:ADD:SUB:SHR:SUBN:SHL Vx, Vy
