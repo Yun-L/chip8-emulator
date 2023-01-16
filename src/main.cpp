@@ -85,8 +85,10 @@ int main(int argc, char *argv[]) {
 
     uint16_t instruction;
     int count = 0;
+    int debug_count = 0;
     loadProgramToRam();
-    while (true) {
+    while (true && debug_count < 25) {
+        debug_count++;
         // read keypad?
 
         // fetch instruction
