@@ -97,7 +97,7 @@ int main(int argc, char *argv[]) {
         count++;
         // std::printf("%d: %X\n", count, instruction);
         switch (NIBBLE_1(instruction)) {
-            case 0: {
+            case 0x0: {
                 switch (NIBBLE_234(instruction)) {
                     case 0x0E0: { // CLS
                         // TODO: clear screen
@@ -114,73 +114,73 @@ int main(int argc, char *argv[]) {
                 }
                 break;
             }
-            case 1: {           // JP addr
                 std::printf("JP addr\n");
                 // TODO: jump to address
                 uint16_t addr = NIBBLE_234(instruction);
+            case 0x1: {           // JP addr
                 break;
             }
-            case 2: {           // CALL addr
+            case 0x2: {           // CALL addr
                 uint16_t addr = instruction & 0x0FFF;
                 break;
             }
-            case 3: {           // SE Vx, byte
+            case 0x3: {           // SE Vx, byte
                 break;
             }
-            case 4: {           // SNE Vx, byte
+            case 0x4: {           // SNE Vx, byte
                 break;
             }
-            case 5: {           // SE Vx, Vy
+            case 0x5: {           // SE Vx, Vy
                 break;
             }
-            case 6: {           // LD Vx, byte
+            case 0x6: {           // LD Vx, byte
                 std::printf("LD Vx, byte\n");
                 // TODO: set Vx register to byte
                 uint8_t x = NIBBLE_2(instruction);
                 uint8_t val = NIBBLE_34(instruction);
                 break;
             }
-            case 7: {           // ADD Vx, byte
+            case 0x7: {           // ADD Vx, byte
                 std::printf("ADD Vx, byte\n");
                 // TODO: add value to Vx register
                 uint8_t x = NIBBLE_2(instruction);
                 uint8_t val = NIBBLE_34(instruction);
                 break;
             }
-            case 8: {           // LD:OR:AND:XOR:ADD:SUB:SHR:SUBN:SHL Vx, Vy
+            case 0x8: {           // LD:OR:AND:XOR:ADD:SUB:SHR:SUBN:SHL Vx, Vy
                 std::printf("8\n");
                 break;
             }
-            case 9: {           // SNE Vx, Vy
+            case 0x9: {           // SNE Vx, Vy
                 break;
             }
-            case 10: {          // LD I, addr
+            case 0xA: {          // LD I, addr
                 std::printf("LD I, addr\n");
                 // TODO: set I register to addr
                 uint16_t val = NIBBLE_234(instruction);
                 break;
             }
-            case 11: {          // JP V0, addr
+            case 0xB: {          // JP V0, addr
                 std::printf("JP V0\n");
                 break;
             }
-            case 12: {          // RND Vx, byte
+            case 0xC: {          // RND Vx, byte
                 break;
             }
-            case 13: {          // DRW Vx, Vy, nibble
                 std::printf("DRW Vx, Vy\n");
                 // TODO: display/draw
                 uint8_t x = NIBBLE_2(instruction);
                 uint8_t y = NIBBLE_3(instruction);
                 uint8_t val = NIBBLE_4(instruction);
+            case 0xD: {          // DRW Vx, Vy, nibble
                 break;
             }
-            case 14: {          // SKP:SKNP Vx
                 std::printf("SKP\n");
+            case 0xE: {          // SKP:SKNP Vx
                 break;
             }
-            case 15: {          // LD Vx DT: LD Vx, K: LD ST, Vx: ...
                 std::printf("LD F\n");
+            case 0xF: {          // LD Vx DT: LD Vx, K: LD ST, Vx: ...
                 break;
             }
             default:
