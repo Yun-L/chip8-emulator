@@ -9,5 +9,7 @@ cl /I ..\extern\SDL2-2.24.1\include\ ^
    /SUBSYSTEM:WINDOWS ^
    shell32.lib SDL2.lib SDL2main.lib
 xcopy /Y ..\extern\SDL2-2.24.1\lib\x64\SDL2.dll .
+rem build tools
+cl /Zi ..\tools\hexToText.cpp
 popd
 popd
