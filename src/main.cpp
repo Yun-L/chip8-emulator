@@ -204,14 +204,15 @@ int loadProgramToRam() {
     return 0;
 }
 
-void handleQueuedEvents(SDL_Event* e, systemState* state) {
-    while (SDL_PollEvent(e) != 0) {
-        if (e->type == SDL_QUIT) {
+void handleQueuedEvents(systemState* state) {
+    static SDL_Event e = {};
+    while (SDL_PollEvent(&e) != 0) {
+        if (e.type == SDL_QUIT) {
             state->quit = true;
         }
-        if (e->type == SDL_KEYDOWN) {
-            printf("key down event: %d\n", e->key.keysym.scancode);
-            switch (e->key.keysym.scancode) {
+        if (e.type == SDL_KEYDOWN) {
+            printf("key down event: %d\n", e.key.keysym.scancode);
+            switch (e.key.keysym.scancode) {
                 case SDL_SCANCODE_1: {
                     state->currentlyPressed.key_1 = true;
                     break;
@@ -281,9 +282,9 @@ void handleQueuedEvents(SDL_Event* e, systemState* state) {
                 }
             }
         }
-        if (e->type == SDL_KEYUP) {
-            printf("key up event: %d\n", e->key.keysym.scancode);
-            switch (e->key.keysym.scancode) {
+        if (e.type == SDL_KEYUP) {
+            printf("key up event: %d\n", e.key.keysym.scancode);
+            switch (e.key.keysym.scancode) {
                 case SDL_SCANCODE_1: {
                     state->currentlyPressed.key_1 = false;
                     break;
@@ -356,17 +357,18 @@ void handleQueuedEvents(SDL_Event* e, systemState* state) {
     }
 }
 
-void waitQueuedEvents(SDL_Event* e, systemState* state, uint8_t x) {
+void waitQueuedEvents(systemState* state, uint8_t x) {
+    static SDL_Event e = {};
     bool keyPressed = false;
     while (!keyPressed) {
-        if (SDL_WaitEvent(e) != 0) {
-            if (e->type == SDL_QUIT) {
+        if (SDL_WaitEvent(&e) != 0) {
+            if (e.type == SDL_QUIT) {
                 state->quit = true;
                 break;
             }
-            if (e->type == SDL_KEYDOWN) {
-                printf("key down event: %d\n", e->key.keysym.scancode);
-                switch (e->key.keysym.scancode) {
+            if (e.type == SDL_KEYDOWN) {
+                printf("key down event: %d\n", e.key.keysym.scancode);
+                switch (e.key.keysym.scancode) {
                     case SDL_SCANCODE_1: {
                         state->currentlyPressed.key_1 = true;
                         keyPressed = true;
@@ -468,9 +470,9 @@ void waitQueuedEvents(SDL_Event* e, systemState* state, uint8_t x) {
                     }
                 }
             }
-            if (e->type == SDL_KEYUP) {
-                printf("key up event: %d\n", e->key.keysym.scancode);
-                switch (e->key.keysym.scancode) {
+            if (e.type == SDL_KEYUP) {
+                printf("key up event: %d\n", e.key.keysym.scancode);
+                switch (e.key.keysym.scancode) {
                     case SDL_SCANCODE_1: {
                         state->currentlyPressed.key_1 = false;
                         break;
@@ -545,7 +547,7 @@ void waitQueuedEvents(SDL_Event* e, systemState* state, uint8_t x) {
 }
 
 
-void runInstruction(uint16_t instruction, systemState* state, SDL_Event* e) {
+void runInstruction(uint16_t instruction, systemState* state) {
     switch (NIBBLE_1(instruction)) {
         case 0x0: {
             switch (NIBBLE_234(instruction)) {
@@ -811,7 +813,7 @@ void runInstruction(uint16_t instruction, systemState* state, SDL_Event* e) {
                     break;
                 }
                 case 0x0A: {
-                    waitQueuedEvents(e, state, x);
+                    waitQueuedEvents(state, x);
                     break;
                 }
                 case 0x15: {
@@ -870,7 +872,6 @@ int main(int argc, char *argv[]) {
     state.currentlyPressed = {};
     uint16_t instruction;
     int debug_count = 0;
-    SDL_Event e;
     srand(time(NULL)); // TODO: check what passing in NULL does
 
     if (loadProgramToRam() < 0) {
@@ -883,19 +884,20 @@ int main(int argc, char *argv[]) {
     std::chrono::steady_clock::time_point loopStart;
     std::chrono::nanoseconds delta = std::chrono::nanoseconds(1428571); // about 1/700 of a second
     std::chrono::steady_clock::time_point debugTime = std::chrono::steady_clock::now();
-    uint64_t _loopEnd = SDL_GetPerformanceCounter();
-    uint64_t _loopStart;
+    
+    uint64_t timeLoopPrev = SDL_GetPerformanceCounter();
+    uint64_t timeLoopCurr;
     double deltaSeconds;
     
     while (!state.quit && err == 0) {
 
-        _loopStart = SDL_GetPerformanceCounter();
-        deltaSeconds = (_loopStart - _loopEnd)/(double)(SDL_GetPerformanceFrequency());
-        _loopEnd = _loopStart;
+        timeLoopCurr = SDL_GetPerformanceCounter();
+        deltaSeconds = (double)(timeLoopCurr - timeLoopPrev)/SDL_GetPerformanceFrequency();
+        timeLoopPrev = timeLoopCurr;
         std::printf("elapsed seconds: %f\n", deltaSeconds);
         
         // handle SDL events
-        handleQueuedEvents(&e, &state);
+        handleQueuedEvents(&state);
 
         // fetch instruction
         instruction = ((uint16_t)(ram[pc]) << 8) | ((uint16_t)(ram[pc+1]));
@@ -906,7 +908,7 @@ int main(int argc, char *argv[]) {
         delay_timer--;
         updateWindow();
 
-        runInstruction(instruction, &state, &e);
+        runInstruction(instruction, &state);
 
         // if (std::chrono::steady_clock::now() < nextStep) {
         //     // std::this_thread::sleep_until(nextStep);
