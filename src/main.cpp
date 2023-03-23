@@ -575,20 +575,6 @@ int main(int argc, char *argv[]) {
             delay_timer--;
         }
         updateWindow();
-
-        // if (std::chrono::steady_clock::now() < nextStep) {
-        //     // std::this_thread::sleep_until(nextStep);
-        //     // TODO: sleep doesnt have enough granularity for 1 second,
-        //     // also sleep only does a minimum of the requested amount, it could
-        //     // take much longer, maybe try running several commands and sleeping
-        //     // for the accumulated time rather than each step?
-        //     std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        // } else {
-        //     printf("loop slow by nanoseconds: %lld\n",
-        //            std::chrono::duration_cast<
-        //              std::chrono::nanoseconds
-        //            >(std::chrono::steady_clock::now() - nextStep).count());
-        // }
     }
     std::chrono::nanoseconds elapsed = std::chrono::steady_clock::now() - debugTime;
     printf("%d instructions in %lld nanoseconds\n", debug_count, elapsed.count());
