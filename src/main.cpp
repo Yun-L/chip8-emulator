@@ -237,7 +237,7 @@ void handleQueuedEvents(systemState* state) {
     }
 }
 
-void runInstruction(uint16_t instruction, systemState* state) {
+bool runInstruction(uint16_t instruction, systemState* state) {
     switch (NIBBLE_1(instruction)) {
         case 0x0: {
             switch (NIBBLE_234(instruction)) {
@@ -262,16 +262,14 @@ void runInstruction(uint16_t instruction, systemState* state) {
         }
         case 0x1: {           // JP addr
             pc = NIBBLE_234(instruction);
-
-            // std::printf("JP addr=0x%X\n", pc);
-            break;
+            return false;
         }
         case 0x2: {           // CALL addr
             uint16_t addr = instruction & 0x0FFF;
             ++stack_p;
             stack[stack_p-1] = pc;
             pc = addr;
-            break;
+            return false;
         }
         case 0x3: {           // SE Vx, byte
             uint8_t x = NIBBLE_2(instruction);
@@ -393,7 +391,7 @@ void runInstruction(uint16_t instruction, systemState* state) {
         }
         case 0xB: {          // JP V0, addr
             pc = registers[0] + NIBBLE_234(instruction);
-            break;
+            return false;
         }
         case 0xC: {          // RND Vx, byte
             uint8_t mask = NIBBLE_34(instruction);
@@ -523,6 +521,9 @@ void runInstruction(uint16_t instruction, systemState* state) {
             // std::printf("invalid instruction 0x%X\n", instruction);
             break;
     }
+
+
+    return true;
 }
 
 int main(int argc, char *argv[]) {
@@ -563,10 +564,11 @@ int main(int argc, char *argv[]) {
             // fetch instruction
             instruction = ((uint16_t)(ram[pc]) << 8) | ((uint16_t)(ram[pc+1]));
             // printf("ins: 0x%04X\n", instruction);
-            pc += 2;
             debug_count++;
             // execute instruction
-            runInstruction(instruction, &state);
+            if (runInstruction(instruction, &state)) {
+                pc += 2;
+            }
         }
         // printf("delay timer: %d\n", delay_timer);
         if (delay_timer > 0) {
