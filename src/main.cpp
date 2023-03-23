@@ -880,9 +880,6 @@ int main(int argc, char *argv[]) {
     };
 
     int err = 0;
-    std::chrono::steady_clock::time_point nextStep;
-    std::chrono::steady_clock::time_point loopStart;
-    std::chrono::nanoseconds delta = std::chrono::nanoseconds(1428571); // about 1/700 of a second
     std::chrono::steady_clock::time_point debugTime = std::chrono::steady_clock::now();
     
     uint64_t timeLoopPrev = SDL_GetPerformanceCounter();
@@ -897,18 +894,20 @@ int main(int argc, char *argv[]) {
         std::printf("elapsed seconds: %f\n", deltaSeconds);
         
         // handle SDL events
-        handleQueuedEvents(&state);
+        for (int i = 0; i < 10; i++) {
+            handleQueuedEvents(&state);
 
-        // fetch instruction
-        instruction = ((uint16_t)(ram[pc]) << 8) | ((uint16_t)(ram[pc+1]));
-        printf("ins: 0x%04X\n", instruction);
-        pc += 2;
-        debug_count++;
+            // fetch instruction
+            instruction = ((uint16_t)(ram[pc]) << 8) | ((uint16_t)(ram[pc+1]));
+            // printf("ins: 0x%04X\n", instruction);
+            pc += 2;
+            debug_count++;
+            // execute instruction
+            runInstruction(instruction, &state);
+        }
         // printf("delay timer: %d\n", delay_timer);
         delay_timer--;
         updateWindow();
-
-        runInstruction(instruction, &state);
 
         // if (std::chrono::steady_clock::now() < nextStep) {
         //     // std::this_thread::sleep_until(nextStep);
