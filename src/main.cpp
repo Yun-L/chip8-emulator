@@ -16,16 +16,17 @@
 #define NIBBLE_234(ins) (ins & 0x0FFF)
 #define NIBBLE_34(ins) ((uint8_t)(ins & 0x00FF))
 
-typedef struct chip8Keys {
-    bool key_1, key_2, key_3, key_C,
-         key_4, key_5, key_6, key_D,
-         key_7, key_8, key_9, key_E,
-         key_A, key_0, key_B, key_F;
-} chip8Keys;
-
 typedef struct systemState {
     bool quit;
-    chip8Keys currentlyPressed;
+    bool waitingKeyPress;
+    bool currentlyPressed[16];
+    // here we represent each key by using its value as the index in this array.
+    // this means that the order in the array doesn't match the order of the
+    // actual physical key layout.
+    // 1 2 3 C
+    // 4 5 6 D
+    // 7 8 9 E
+    // A 0 B F
 } systemState;
 
 // TODO: replace with cli arg
@@ -210,342 +211,31 @@ void handleQueuedEvents(systemState* state) {
         if (e.type == SDL_QUIT) {
             state->quit = true;
         }
-        if (e.type == SDL_KEYDOWN) {
+        if (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) {
+            bool pressed = (e.type == SDL_KEYDOWN);
             printf("key down event: %d\n", e.key.keysym.scancode);
             switch (e.key.keysym.scancode) {
-                case SDL_SCANCODE_1: {
-                    state->currentlyPressed.key_1 = true;
-                    break;
-                }
-                case SDL_SCANCODE_2: {
-                    state->currentlyPressed.key_2 = true;
-                    break;
-                }
-                case SDL_SCANCODE_3: {
-                    state->currentlyPressed.key_3 = true;
-                    break;
-                }
-                case SDL_SCANCODE_4: {
-                    state->currentlyPressed.key_C = true;
-                    break;
-                }
-                case SDL_SCANCODE_Q: {
-                    state->currentlyPressed.key_4 = true;
-                    break;
-                }
-                case SDL_SCANCODE_W: {
-                    state->currentlyPressed.key_5 = true;
-                    break;
-                }
-                case SDL_SCANCODE_E: {
-                    state->currentlyPressed.key_6 = true;
-                    break;
-                }
-                case SDL_SCANCODE_R: {
-                    state->currentlyPressed.key_D = true;
-                    break;
-                }
-                case SDL_SCANCODE_A: {
-                    state->currentlyPressed.key_7 = true;
-                    break;
-                }
-                case SDL_SCANCODE_S: {
-                    state->currentlyPressed.key_8 = true;
-                    break;
-                }
-                case SDL_SCANCODE_D: {
-                    state->currentlyPressed.key_9 = true;
-                    break;
-                }
-                case SDL_SCANCODE_F: {
-                    state->currentlyPressed.key_E = true;
-                    break;
-                }
-                case SDL_SCANCODE_Z: {
-                    state->currentlyPressed.key_A = true;
-                    break;
-                }
-                case SDL_SCANCODE_X: {
-                    state->currentlyPressed.key_0 = true;
-                    break;
-                }
-                case SDL_SCANCODE_C: {
-                    state->currentlyPressed.key_B = true;
-                    break;
-                }
-                case SDL_SCANCODE_V: {
-                    state->currentlyPressed.key_F = true;
-                    break;
-                }
-                default: {
-                    break;
-                }
-            }
-        }
-        if (e.type == SDL_KEYUP) {
-            printf("key up event: %d\n", e.key.keysym.scancode);
-            switch (e.key.keysym.scancode) {
-                case SDL_SCANCODE_1: {
-                    state->currentlyPressed.key_1 = false;
-                    break;
-                }
-                case SDL_SCANCODE_2: {
-                    state->currentlyPressed.key_2 = false;
-                    break;
-                }
-                case SDL_SCANCODE_3: {
-                    state->currentlyPressed.key_3 = false;
-                    break;
-                }
-                case SDL_SCANCODE_4: {
-                    state->currentlyPressed.key_C = false;
-                    break;
-                }
-                case SDL_SCANCODE_Q: {
-                    state->currentlyPressed.key_4 = false;
-                    break;
-                }
-                case SDL_SCANCODE_W: {
-                    state->currentlyPressed.key_5 = false;
-                    break;
-                }
-                case SDL_SCANCODE_E: {
-                    state->currentlyPressed.key_6 = false;
-                    break;
-                }
-                case SDL_SCANCODE_R: {
-                    state->currentlyPressed.key_D = false;
-                    break;
-                }
-                case SDL_SCANCODE_A: {
-                    state->currentlyPressed.key_7 = false;
-                    break;
-                }
-                case SDL_SCANCODE_S: {
-                    state->currentlyPressed.key_8 = false;
-                    break;
-                }
-                case SDL_SCANCODE_D: {
-                    state->currentlyPressed.key_9 = false;
-                    break;
-                }
-                case SDL_SCANCODE_F: {
-                    state->currentlyPressed.key_E = false;
-                    break;
-                }
-                case SDL_SCANCODE_Z: {
-                    state->currentlyPressed.key_A = false;
-                    break;
-                }
-                case SDL_SCANCODE_X: {
-                    state->currentlyPressed.key_0 = false;
-                    break;
-                }
-                case SDL_SCANCODE_C: {
-                    state->currentlyPressed.key_B = false;
-                    break;
-                }
-                case SDL_SCANCODE_V: {
-                    state->currentlyPressed.key_F = false;
-                    break;
-                }
-                default: {
-                    break;
-                }
+                case SDL_SCANCODE_1: state->currentlyPressed[1] = pressed; break;
+                case SDL_SCANCODE_2: state->currentlyPressed[2] = pressed; break;
+                case SDL_SCANCODE_3: state->currentlyPressed[3] = pressed; break;
+                case SDL_SCANCODE_4: state->currentlyPressed[12] = pressed; break;
+                case SDL_SCANCODE_Q: state->currentlyPressed[4] = pressed; break;
+                case SDL_SCANCODE_W: state->currentlyPressed[5] = pressed; break;
+                case SDL_SCANCODE_E: state->currentlyPressed[6] = pressed; break;
+                case SDL_SCANCODE_R: state->currentlyPressed[13] = pressed; break;
+                case SDL_SCANCODE_A: state->currentlyPressed[7] = pressed; break;
+                case SDL_SCANCODE_S: state->currentlyPressed[8] = pressed; break;
+                case SDL_SCANCODE_D: state->currentlyPressed[9] = pressed; break;
+                case SDL_SCANCODE_F: state->currentlyPressed[14] = pressed; break;
+                case SDL_SCANCODE_Z: state->currentlyPressed[10] = pressed; break;
+                case SDL_SCANCODE_X: state->currentlyPressed[0] = pressed; break;
+                case SDL_SCANCODE_C: state->currentlyPressed[11] = pressed; break;
+                case SDL_SCANCODE_V: state->currentlyPressed[15] = pressed; break;
+                default: break;
             }
         }
     }
 }
-
-void waitQueuedEvents(systemState* state, uint8_t x) {
-    static SDL_Event e = {};
-    bool keyPressed = false;
-    while (!keyPressed) {
-        if (SDL_WaitEvent(&e) != 0) {
-            if (e.type == SDL_QUIT) {
-                state->quit = true;
-                break;
-            }
-            if (e.type == SDL_KEYDOWN) {
-                printf("key down event: %d\n", e.key.keysym.scancode);
-                switch (e.key.keysym.scancode) {
-                    case SDL_SCANCODE_1: {
-                        state->currentlyPressed.key_1 = true;
-                        keyPressed = true;
-                        registers[x] = 0x1;
-                        break;
-                    }
-                    case SDL_SCANCODE_2: {
-                        state->currentlyPressed.key_2 = true;
-                        keyPressed = true;
-                        registers[x] = 0x2;
-                        break;
-                    }
-                    case SDL_SCANCODE_3: {
-                        state->currentlyPressed.key_3 = true;
-                        keyPressed = true;
-                        registers[x] = 0x3;
-                        break;
-                    }
-                    case SDL_SCANCODE_4: {
-                        state->currentlyPressed.key_C = true;
-                        keyPressed = true;
-                        registers[x] = 0xC;
-                        break;
-                    }
-                    case SDL_SCANCODE_Q: {
-                        state->currentlyPressed.key_4 = true;
-                        keyPressed = true;
-                        registers[x] = 0x4;
-                        break;
-                    }
-                    case SDL_SCANCODE_W: {
-                        state->currentlyPressed.key_5 = true;
-                        keyPressed = true;
-                        registers[x] = 0x5;
-                        break;
-                    }
-                    case SDL_SCANCODE_E: {
-                        state->currentlyPressed.key_6 = true;
-                        keyPressed = true;
-                        registers[x] = 0x6;
-                        break;
-                    }
-                    case SDL_SCANCODE_R: {
-                        state->currentlyPressed.key_D = true;
-                        keyPressed = true;
-                        registers[x] = 0xD;
-                        break;
-                    }
-                    case SDL_SCANCODE_A: {
-                        state->currentlyPressed.key_7 = true;
-                        keyPressed = true;
-                        registers[x] = 0x7;
-                        break;
-                    }
-                    case SDL_SCANCODE_S: {
-                        state->currentlyPressed.key_8 = true;
-                        keyPressed = true;
-                        registers[x] = 0x8;
-                        break;
-                    }
-                    case SDL_SCANCODE_D: {
-                        state->currentlyPressed.key_9 = true;
-                        keyPressed = true;
-                        registers[x] = 0x9;
-                        break;
-                    }
-                    case SDL_SCANCODE_F: {
-                        state->currentlyPressed.key_E = true;
-                        keyPressed = true;
-                        registers[x] = 0xE;
-                        break;
-                    }
-                    case SDL_SCANCODE_Z: {
-                        state->currentlyPressed.key_A = true;
-                        keyPressed = true;
-                        registers[x] = 0xA;
-                        break;
-                    }
-                    case SDL_SCANCODE_X: {
-                        state->currentlyPressed.key_0 = true;
-                        keyPressed = true;
-                        registers[x] = 0x0;
-                        break;
-                    }
-                    case SDL_SCANCODE_C: {
-                        state->currentlyPressed.key_B = true;
-                        keyPressed = true;
-                        registers[x] = 0xB;
-                        break;
-                    }
-                    case SDL_SCANCODE_V: {
-                        state->currentlyPressed.key_F = true;
-                        keyPressed = true;
-                        registers[x] = 0xF;
-                        break;
-                    }
-                    default: {
-                        break;
-                    }
-                }
-            }
-            if (e.type == SDL_KEYUP) {
-                printf("key up event: %d\n", e.key.keysym.scancode);
-                switch (e.key.keysym.scancode) {
-                    case SDL_SCANCODE_1: {
-                        state->currentlyPressed.key_1 = false;
-                        break;
-                    }
-                    case SDL_SCANCODE_2: {
-                        state->currentlyPressed.key_2 = false;
-                        break;
-                    }
-                    case SDL_SCANCODE_3: {
-                        state->currentlyPressed.key_3 = false;
-                        break;
-                    }
-                    case SDL_SCANCODE_4: {
-                        state->currentlyPressed.key_C = false;
-                        break;
-                    }
-                    case SDL_SCANCODE_Q: {
-                        state->currentlyPressed.key_4 = false;
-                        break;
-                    }
-                    case SDL_SCANCODE_W: {
-                        state->currentlyPressed.key_5 = false;
-                        break;
-                    }
-                    case SDL_SCANCODE_E: {
-                        state->currentlyPressed.key_6 = false;
-                        break;
-                    }
-                    case SDL_SCANCODE_R: {
-                        state->currentlyPressed.key_D = false;
-                        break;
-                    }
-                    case SDL_SCANCODE_A: {
-                        state->currentlyPressed.key_7 = false;
-                        break;
-                    }
-                    case SDL_SCANCODE_S: {
-                        state->currentlyPressed.key_8 = false;
-                        break;
-                    }
-                    case SDL_SCANCODE_D: {
-                        state->currentlyPressed.key_9 = false;
-                        break;
-                    }
-                    case SDL_SCANCODE_F: {
-                        state->currentlyPressed.key_E = false;
-                        break;
-                    }
-                    case SDL_SCANCODE_Z: {
-                        state->currentlyPressed.key_A = false;
-                        break;
-                    }
-                    case SDL_SCANCODE_X: {
-                        state->currentlyPressed.key_0 = false;
-                        break;
-                    }
-                    case SDL_SCANCODE_C: {
-                        state->currentlyPressed.key_B = false;
-                        break;
-                    }
-                    case SDL_SCANCODE_V: {
-                        state->currentlyPressed.key_F = false;
-                        break;
-                    }
-                    default: {
-                        break;
-                    }
-                }
-            }
-        }
-    }
-}
-
 
 void runInstruction(uint16_t instruction, systemState* state) {
     switch (NIBBLE_1(instruction)) {
@@ -754,44 +444,13 @@ void runInstruction(uint16_t instruction, systemState* state) {
             uint8_t x = ram[NIBBLE_2(instruction)];
             switch (op) {
                 case 0x9E: {
-                    if (x == 0x1 && state->currentlyPressed.key_1 ||
-                        x == 0x2 && state->currentlyPressed.key_2 ||
-                        x == 0x3 && state->currentlyPressed.key_3 ||
-                        x == 0xC && state->currentlyPressed.key_C ||
-                        x == 0x4 && state->currentlyPressed.key_4 ||
-                        x == 0x5 && state->currentlyPressed.key_5 ||
-                        x == 0x6 && state->currentlyPressed.key_6 ||
-                        x == 0xD && state->currentlyPressed.key_D ||
-                        x == 0x7 && state->currentlyPressed.key_7 ||
-                        x == 0x8 && state->currentlyPressed.key_8 ||
-                        x == 0x9 && state->currentlyPressed.key_9 ||
-                        x == 0xE && state->currentlyPressed.key_E ||
-                        x == 0xA && state->currentlyPressed.key_A ||
-                        x == 0x0 && state->currentlyPressed.key_0 ||
-                        x == 0xB && state->currentlyPressed.key_B ||
-                        x == 0xF && state->currentlyPressed.key_F) {
-
+                    if (state->currentlyPressed[x]) {
                         pc += 2;
                     }
                     break;
                 }
                 case 0xA1: {
-                    if (x == 0x1 && !state->currentlyPressed.key_1 ||
-                        x == 0x2 && !state->currentlyPressed.key_2 ||
-                        x == 0x3 && !state->currentlyPressed.key_3 ||
-                        x == 0xC && !state->currentlyPressed.key_C ||
-                        x == 0x4 && !state->currentlyPressed.key_4 ||
-                        x == 0x5 && !state->currentlyPressed.key_5 ||
-                        x == 0x6 && !state->currentlyPressed.key_6 ||
-                        x == 0xD && !state->currentlyPressed.key_D ||
-                        x == 0x7 && !state->currentlyPressed.key_7 ||
-                        x == 0x8 && !state->currentlyPressed.key_8 ||
-                        x == 0x9 && !state->currentlyPressed.key_9 ||
-                        x == 0xE && !state->currentlyPressed.key_E ||
-                        x == 0xA && !state->currentlyPressed.key_A ||
-                        x == 0x0 && !state->currentlyPressed.key_0 ||
-                        x == 0xB && !state->currentlyPressed.key_B ||
-                        x == 0xF && !state->currentlyPressed.key_F) {
+                    if (!(state->currentlyPressed[x])) {
                         pc += 2;
                     }
                     break;
@@ -813,8 +472,13 @@ void runInstruction(uint16_t instruction, systemState* state) {
                     break;
                 }
                 case 0x0A: {
-                    waitQueuedEvents(state, x);
-                    break;
+                    for (uint8_t i = 0; i < 16; ++i) {
+                        if (state->currentlyPressed[i]) {
+                            registers[x] = i;
+                            return true;
+                        }
+                    }
+                    return false;
                 }
                 case 0x15: {
                     delay_timer = registers[x];
@@ -868,8 +532,6 @@ int main(int argc, char *argv[]) {
     }
 
     systemState state = {};
-    state.quit = false;
-    state.currentlyPressed = {};
     uint16_t instruction;
     int debug_count = 0;
     srand(time(NULL)); // TODO: check what passing in NULL does
@@ -881,7 +543,8 @@ int main(int argc, char *argv[]) {
 
     int err = 0;
     std::chrono::steady_clock::time_point debugTime = std::chrono::steady_clock::now();
-    
+
+    uint64_t performanceFreq = SDL_GetPerformanceFrequency();
     uint64_t timeLoopPrev = SDL_GetPerformanceCounter();
     uint64_t timeLoopCurr;
     double deltaSeconds;
@@ -889,7 +552,7 @@ int main(int argc, char *argv[]) {
     while (!state.quit && err == 0) {
 
         timeLoopCurr = SDL_GetPerformanceCounter();
-        deltaSeconds = (double)(timeLoopCurr - timeLoopPrev)/SDL_GetPerformanceFrequency();
+        deltaSeconds = (double)(timeLoopCurr - timeLoopPrev)/performanceFreq;
         timeLoopPrev = timeLoopCurr;
         std::printf("elapsed seconds: %f\n", deltaSeconds);
         
