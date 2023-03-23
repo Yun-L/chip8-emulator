@@ -569,7 +569,9 @@ int main(int argc, char *argv[]) {
             runInstruction(instruction, &state);
         }
         // printf("delay timer: %d\n", delay_timer);
-        delay_timer--;
+        if (delay_timer > 0) {
+            delay_timer--;
+        }
         updateWindow();
 
         // if (std::chrono::steady_clock::now() < nextStep) {
