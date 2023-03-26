@@ -16,10 +16,17 @@
 #define NIBBLE_234(ins) (ins & 0x0FFF)
 #define NIBBLE_34(ins) ((uint8_t)(ins & 0x00FF))
 
+enum class keyState {
+    IDLE,
+    PRESSED,
+    RELEASED
+    // for the instruction Fx0A, we only count a key as pressed if it was
+    // pressed, then released.
+};
+
 typedef struct systemState {
     bool quit;
-    bool waitingKeyPress;
-    bool currentlyPressed[16];
+    keyState keyStates[16];
     // here we represent each key by using its value as the index in this array.
     // this means that the order in the array doesn't match the order of the
     // actual physical key layout.
@@ -212,25 +219,26 @@ void handleQueuedEvents(systemState* state) {
             state->quit = true;
         }
         if (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) {
-            bool pressed = (e.type == SDL_KEYDOWN);
+            keyState pressed = (e.type == SDL_KEYDOWN) ?
+                keyState::PRESSED : keyState::RELEASED;
             printf("key down event: %d\n", e.key.keysym.scancode);
             switch (e.key.keysym.scancode) {
-                case SDL_SCANCODE_1: state->currentlyPressed[1] = pressed; break;
-                case SDL_SCANCODE_2: state->currentlyPressed[2] = pressed; break;
-                case SDL_SCANCODE_3: state->currentlyPressed[3] = pressed; break;
-                case SDL_SCANCODE_4: state->currentlyPressed[12] = pressed; break;
-                case SDL_SCANCODE_Q: state->currentlyPressed[4] = pressed; break;
-                case SDL_SCANCODE_W: state->currentlyPressed[5] = pressed; break;
-                case SDL_SCANCODE_E: state->currentlyPressed[6] = pressed; break;
-                case SDL_SCANCODE_R: state->currentlyPressed[13] = pressed; break;
-                case SDL_SCANCODE_A: state->currentlyPressed[7] = pressed; break;
-                case SDL_SCANCODE_S: state->currentlyPressed[8] = pressed; break;
-                case SDL_SCANCODE_D: state->currentlyPressed[9] = pressed; break;
-                case SDL_SCANCODE_F: state->currentlyPressed[14] = pressed; break;
-                case SDL_SCANCODE_Z: state->currentlyPressed[10] = pressed; break;
-                case SDL_SCANCODE_X: state->currentlyPressed[0] = pressed; break;
-                case SDL_SCANCODE_C: state->currentlyPressed[11] = pressed; break;
-                case SDL_SCANCODE_V: state->currentlyPressed[15] = pressed; break;
+                case SDL_SCANCODE_1: state->keyStates[1] = pressed; break;
+                case SDL_SCANCODE_2: state->keyStates[2] = pressed; break;
+                case SDL_SCANCODE_3: state->keyStates[3] = pressed; break;
+                case SDL_SCANCODE_4: state->keyStates[12] = pressed; break;
+                case SDL_SCANCODE_Q: state->keyStates[4] = pressed; break;
+                case SDL_SCANCODE_W: state->keyStates[5] = pressed; break;
+                case SDL_SCANCODE_E: state->keyStates[6] = pressed; break;
+                case SDL_SCANCODE_R: state->keyStates[13] = pressed; break;
+                case SDL_SCANCODE_A: state->keyStates[7] = pressed; break;
+                case SDL_SCANCODE_S: state->keyStates[8] = pressed; break;
+                case SDL_SCANCODE_D: state->keyStates[9] = pressed; break;
+                case SDL_SCANCODE_F: state->keyStates[14] = pressed; break;
+                case SDL_SCANCODE_Z: state->keyStates[10] = pressed; break;
+                case SDL_SCANCODE_X: state->keyStates[0] = pressed; break;
+                case SDL_SCANCODE_C: state->keyStates[11] = pressed; break;
+                case SDL_SCANCODE_V: state->keyStates[15] = pressed; break;
                 default: break;
             }
         }
@@ -439,16 +447,16 @@ bool runInstruction(uint16_t instruction, systemState* state) {
             // std::printf("SKP\n");
         case 0xE: {          // SKP:SKNP Vx
             uint8_t op = NIBBLE_34(instruction);
-            uint8_t x = ram[NIBBLE_2(instruction)];
+            uint8_t x = registers[NIBBLE_2(instruction)];
             switch (op) {
                 case 0x9E: {
-                    if (state->currentlyPressed[x]) {
+                    if (state->keyStates[x] == keyState::PRESSED) {
                         pc += 2;
                     }
                     break;
                 }
                 case 0xA1: {
-                    if (!(state->currentlyPressed[x])) {
+                    if (state->keyStates[x] != keyState::PRESSED) {
                         pc += 2;
                     }
                     break;
@@ -471,7 +479,7 @@ bool runInstruction(uint16_t instruction, systemState* state) {
                 }
                 case 0x0A: {
                     for (uint8_t i = 0; i < 16; ++i) {
-                        if (state->currentlyPressed[i]) {
+                        if (state->keyStates[i] == keyState::RELEASED) {
                             registers[x] = i;
                             return true;
                         }
@@ -568,6 +576,13 @@ int main(int argc, char *argv[]) {
             // execute instruction
             if (runInstruction(instruction, &state)) {
                 pc += 2;
+            }
+
+            // return released key states back to idle
+            for (uint8_t i = 0; i < 16; ++i) {
+                if (state.keyStates[i] == keyState::RELEASED) {
+                    state.keyStates[i] = keyState::IDLE;
+                }
             }
         }
         // printf("delay timer: %d\n", delay_timer);
