@@ -27,6 +27,35 @@ enum class keyState {
     // for the instruction Fx0A, we only count a key as pressed if it was
     // pressed, then released.
 };
+typedef struct cpu {
+    uint8_t registers[16];
+    uint8_t stack_p;
+    uint8_t delay_timer;
+    uint8_t sound_timer;
+    uint16_t index;
+    uint16_t pc;
+    uint16_t stack[64] = {0};
+    bool display[2048] = {0}; // 64 x 32 bits, 8 x 32 uint8_t's
+    uint8_t ram[4096] = {
+        0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+        0x20, 0x60, 0x20, 0x20, 0x70, // 1
+        0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+        0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+        0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+        0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+        0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+        0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+        0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+        0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+        0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+        0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+        0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+        0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+        0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+        0xF0, 0x80, 0xF0, 0x80, 0x80, // F
+        // the rest should be 0 initialized
+    };
+} cpu;
 
 typedef struct systemState {
     bool quit;
@@ -54,35 +83,7 @@ std::string INPUT_ROM = "../data/Jumping X and O [Harry Kleinberg, 1977].ch8";
 // std::string INPUT_ROM = "../data/Delay Timer Test [Matthew Mikolay, 2010].ch8";
 // std::string INPUT_ROM = "../data/Clock Program [Bill Fisher, 1981].ch8";
 // WCHAR modulePath[512];
-uint8_t registers[16] = {0};
-uint8_t stack_p = 0;
-uint8_t delay_timer = 0;
-uint8_t sound_timer = 0;
-uint16_t index = 0;
-uint16_t pc = 0x200;
 Mix_Chunk *gTone = NULL;
-
-uint8_t ram[4096] = {
-    0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
-    0x20, 0x60, 0x20, 0x20, 0x70, // 1
-    0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
-    0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
-    0x90, 0x90, 0xF0, 0x10, 0x10, // 4
-    0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
-    0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
-    0xF0, 0x10, 0x20, 0x40, 0x40, // 7
-    0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
-    0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
-    0xF0, 0x90, 0xF0, 0x90, 0x90, // A
-    0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
-    0xF0, 0x80, 0x80, 0x80, 0xF0, // C
-    0xE0, 0x90, 0x90, 0x90, 0xE0, // D
-    0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
-    0xF0, 0x80, 0xF0, 0x80, 0x80, // F
-    // the rest should be 0 initialized
-};
-uint16_t stack[64] = {0};
-bool display[2048] = {0}; // 64 x 32 bits, 8 x 32 uint8_t's
 
 // SDL
 SDL_Window* gWindow = NULL;
@@ -155,7 +156,7 @@ void close() {
     ImGui::DestroyContext();
 }
 
-SDL_Texture* updateWindow() {
+SDL_Texture* updateWindow(cpu *ch8Cpu) {
     constexpr int DISPLAY_HEIGHT = 32;
     constexpr int DISPLAY_WIDTH = 64;
     constexpr int PH = 1;
@@ -175,7 +176,7 @@ SDL_Texture* updateWindow() {
     SDL_Rect scaledPixel = {0, 0, PW, PH};
     SDL_SetRenderDrawColor(gRenderer, 0x77, 0xDD, 0x77, SDL_ALPHA_OPAQUE);
     for (int i = 0; i < 2048; ++i) {
-        if (display[i]) {
+        if (ch8Cpu->display[i]) {
             scaledPixel.x = PW * (i % 64);
             scaledPixel.y = PH * (i / 64);
             //err = SDL_RenderFillRect(gRenderer, &scaledPixel);
@@ -194,7 +195,7 @@ SDL_Texture* updateWindow() {
     //return err;
 }
 
-void writeDisplayStateToFile() {
+void writeDisplayStateToFile(cpu *ch8Cpu) {
     FILE *pFile;
     pFile = fopen("display.txt", "w");
 
@@ -210,7 +211,7 @@ void writeDisplayStateToFile() {
             fputc('\n', pFile);
         }
 
-        if (display[i]) {
+        if (ch8Cpu->display[i]) {
             printf("X");
             fputc('X', pFile);
         } else {
@@ -222,7 +223,7 @@ void writeDisplayStateToFile() {
 }
 
 // TODO: validate, rom is not too big, handle error codes, harden
-int loadProgramToRam() {
+int loadProgramToRam(cpu *ch8Cpu) {
     HANDLE hFile = CreateFileA(
         INPUT_ROM.c_str(),
         GENERIC_READ,
@@ -240,7 +241,7 @@ int loadProgramToRam() {
     }
     printf("num bytes in file: %lld\n", fileNumBytes.QuadPart);
 
-    if (ReadFile(hFile, ram + 0x200, fileNumBytes.QuadPart, NULL, NULL) < 0) {
+    if (ReadFile(hFile, (ch8Cpu->ram) + 0x200, fileNumBytes.QuadPart, NULL, NULL) < 0) {
         printf("Failed to read file\n");
         return -1;
     }
@@ -283,19 +284,19 @@ void handleQueuedEvents(systemState* state) {
     }
 }
 
-bool runInstruction(uint16_t instruction, systemState* state) {
+bool runInstruction(uint16_t instruction, systemState *state, cpu *ch8Cpu) {
     switch (NIBBLE_1(instruction)) {
         case 0x0: {
             switch (NIBBLE_234(instruction)) {
                 case 0x0E0: { // CLS
                     for (int i = 0; i < 2048; ++i) {
-                        display[i] = false;
+                        ch8Cpu->display[i] = false;
                     }
                     break;
                 }
                 case 0x0EE: { // RET
-                    --stack_p;
-                    pc = stack[stack_p];
+                    --(ch8Cpu->stack_p);
+                    ch8Cpu->pc = ch8Cpu->stack[ch8Cpu->stack_p];
                     break;
                 }
                 default: {
@@ -305,50 +306,50 @@ bool runInstruction(uint16_t instruction, systemState* state) {
             break;
         }
         case 0x1: {           // JP addr
-            pc = NIBBLE_234(instruction);
+            ch8Cpu->pc = NIBBLE_234(instruction);
             return false;
         }
         case 0x2: {           // CALL addr
             uint16_t addr = instruction & 0x0FFF;
-            ++stack_p;
-            stack[stack_p-1] = pc;
-            pc = addr;
+            ++(ch8Cpu->stack_p);
+            ch8Cpu->stack[(ch8Cpu->stack_p)-1] = ch8Cpu->pc;
+            ch8Cpu->pc = addr;
             return false;
         }
         case 0x3: {           // SE Vx, byte
             uint8_t x = NIBBLE_2(instruction);
             uint8_t val = NIBBLE_34(instruction);
-            if (registers[x] == val) {
-                pc += 2;
+            if (ch8Cpu->registers[x] == val) {
+                ch8Cpu->pc += 2;
             }
             break;
         }
         case 0x4: {           // SNE Vx, byte
             uint8_t x = NIBBLE_2(instruction);
             uint8_t val = NIBBLE_34(instruction);
-            if (registers[x] != val) {
-                pc += 2;
+            if (ch8Cpu->registers[x] != val) {
+                ch8Cpu->pc += 2;
             }
             break;
         }
         case 0x5: {           // SE Vx, Vy
             uint8_t x = NIBBLE_2(instruction);
             uint8_t y = NIBBLE_3(instruction);
-            if (registers[x] == registers[y]) {
-                pc += 2;
+            if (ch8Cpu->registers[x] == ch8Cpu->registers[y]) {
+                ch8Cpu->pc += 2;
             }
             break;
         }
         case 0x6: {           // LD Vx, byte
             uint8_t x = NIBBLE_2(instruction);
             uint8_t val = NIBBLE_34(instruction);
-            registers[x] = val;
+            ch8Cpu->registers[x] = val;
             break;
         }
         case 0x7: {           // ADD Vx, byte
             uint8_t x = NIBBLE_2(instruction);
             uint8_t val = NIBBLE_34(instruction);
-            registers[x] += val;
+            ch8Cpu->registers[x] += val;
             break;
         }
         case 0x8: {           // LD:OR:AND:XOR:ADD:SUB:SHR:SUBN:SHL Vx, Vy
@@ -357,59 +358,59 @@ bool runInstruction(uint16_t instruction, systemState* state) {
             uint8_t op = NIBBLE_4(instruction);
             switch(op) {
                 case 0: {
-                    registers[x] = registers[y];
+                    ch8Cpu->registers[x] = ch8Cpu->registers[y];
                     break;
                 }
                 case 1: {
-                    registers[x] = registers[x] | registers[y];
+                    ch8Cpu->registers[x] = ch8Cpu->registers[x] | ch8Cpu->registers[y];
                     break;
                 }
                 case 2: {
-                    registers[x] = registers[x] & registers[y];
+                    ch8Cpu->registers[x] = ch8Cpu->registers[x] & ch8Cpu->registers[y];
                     break;
                 }
                 case 3: {
-                    registers[x] = registers[x] ^ registers[y];
+                    ch8Cpu->registers[x] = ch8Cpu->registers[x] ^ ch8Cpu->registers[y];
                     break;
                 }
                 case 4: {
-                    uint16_t sum = registers[x] + registers[y];
+                    uint16_t sum = ch8Cpu->registers[x] + ch8Cpu->registers[y];
                     if (sum > 255) {
-                        registers[0xF] = 1;
+                        ch8Cpu->registers[0xF] = 1;
                     } else {
-                        registers[0xF] = 0;
+                        ch8Cpu->registers[0xF] = 0;
                     }
-                    registers[x] = (uint8_t)sum;
+                    ch8Cpu->registers[x] = (uint8_t)sum;
                     break;
                 }
                 case 5: {
-                    if (registers[x] > registers[y]) {
-                        registers[x] = registers[x] - registers[y];
-                        registers[0xF] = 1;
+                    if (ch8Cpu->registers[x] > ch8Cpu->registers[y]) {
+                        ch8Cpu->registers[x] = ch8Cpu->registers[x] - ch8Cpu->registers[y];
+                        ch8Cpu->registers[0xF] = 1;
                     } else {
-                        registers[x] = 256 - (registers[y] - registers[x]);
-                        registers[0xF] = 0;
+                        ch8Cpu->registers[x] = 256 - (ch8Cpu->registers[y] - ch8Cpu->registers[x]);
+                        ch8Cpu->registers[0xF] = 0;
                     }
                     break;
                 }
                 case 6: {
-                    registers[0xF] = registers[x] & 1;
-                    registers[x] = registers[x] >> 1;
+                    ch8Cpu->registers[0xF] = ch8Cpu->registers[x] & 1;
+                    ch8Cpu->registers[x] = ch8Cpu->registers[x] >> 1;
                     break;
                 }
                 case 7: {
-                    if (registers[y] > registers[x]) {
-                        registers[x] = registers[y] - registers[x];
-                        registers[0xF] = 1;
+                    if (ch8Cpu->registers[y] > ch8Cpu->registers[x]) {
+                        ch8Cpu->registers[x] = ch8Cpu->registers[y] - ch8Cpu->registers[x];
+                        ch8Cpu->registers[0xF] = 1;
                     } else {
-                        registers[x] = 256 - (registers[x] - registers[y]);
-                        registers[0xF] = 0;
+                        ch8Cpu->registers[x] = 256 - (ch8Cpu->registers[x] - ch8Cpu->registers[y]);
+                        ch8Cpu->registers[0xF] = 0;
                     }
                     break;
                 }
                 case 0xE: {
-                    registers[0xF] = (registers[x] & 0b10000000) >> 7;
-                    registers[x] = registers[x] << 1;
+                    ch8Cpu->registers[0xF] = (ch8Cpu->registers[x] & 0b10000000) >> 7;
+                    ch8Cpu->registers[x] = ch8Cpu->registers[x] << 1;
                     break;
                 }
                 default: {
@@ -421,36 +422,36 @@ bool runInstruction(uint16_t instruction, systemState* state) {
         case 0x9: {           // SNE Vx, Vy
             uint8_t x = NIBBLE_2(instruction);
             uint8_t y = NIBBLE_3(instruction);
-            if (registers[x] != registers[y]) {
-                pc += 2;
+            if (ch8Cpu->registers[x] != ch8Cpu->registers[y]) {
+                ch8Cpu->pc += 2;
             }
             break;
         }
         case 0xA: {          // LD I, addr
-            index = NIBBLE_234(instruction);
+            ch8Cpu->index = NIBBLE_234(instruction);
             break;
         }
         case 0xB: {          // JP V0, addr
-            pc = registers[0] + NIBBLE_234(instruction);
+            ch8Cpu->pc = ch8Cpu->registers[0] + NIBBLE_234(instruction);
             return false;
         }
         case 0xC: {          // RND Vx, byte
             uint8_t mask = NIBBLE_34(instruction);
             uint8_t x = NIBBLE_2(instruction);
-            registers[x] = (uint8_t)rand() & mask;
+            ch8Cpu->registers[x] = (uint8_t)rand() & mask;
             break;
         }
         case 0xD: {          // DRW Vx, Vy, nibble
-            registers[0xF] = 0;
+            ch8Cpu->registers[0xF] = 0;
             uint8_t _x = NIBBLE_2(instruction);
             uint8_t _y = NIBBLE_3(instruction);
             uint8_t n = NIBBLE_4(instruction);
-            uint8_t x = registers[_x];
-            uint8_t y = registers[_y];
+            uint8_t x = ch8Cpu->registers[_x];
+            uint8_t y = ch8Cpu->registers[_y];
 
             for (int i = 0; i < n; ++i) {
                 int disp_index = (y+i)*64 + x;
-                int sprite_index = index + i;
+                int sprite_index = (ch8Cpu->index) + i;
                 for (int j = 0; j < 8; ++j) {
                     // (disp_index + j >= 2048)
                     if (y+i < 32) {
@@ -460,15 +461,15 @@ bool runInstruction(uint16_t instruction, systemState* state) {
                         } else {
                             wrapped = disp_index + j;
                         }
-                        int curr_display_bit = display[wrapped] ? 1 : 0;
-                        int curr_sprite_bit = (ram[sprite_index] >> (7 - j)) & 1;
+                        int curr_display_bit = ch8Cpu->display[wrapped] ? 1 : 0;
+                        int curr_sprite_bit = ((ch8Cpu->ram[sprite_index]) >> (7 - j)) & 1;
                         if (curr_sprite_bit != curr_display_bit) {
-                            display[wrapped] = true;
+                            ch8Cpu->display[wrapped] = true;
                         } else {
-                            display[wrapped] = false;
+                            ch8Cpu->display[wrapped] = false;
                             if (curr_display_bit == 1) {
                                 // set vf on collisions
-                                registers[0xF] = 1;
+                                ch8Cpu->registers[0xF] = 1;
                             }
                         }
                     }
@@ -478,17 +479,17 @@ bool runInstruction(uint16_t instruction, systemState* state) {
         }
         case 0xE: {          // SKP:SKNP Vx
             uint8_t op = NIBBLE_34(instruction);
-            uint8_t x = registers[NIBBLE_2(instruction)];
+            uint8_t x = ch8Cpu->registers[NIBBLE_2(instruction)];
             switch (op) {
                 case 0x9E: {
                     if (state->keyStates[x] == keyState::PRESSED) {
-                        pc += 2;
+                        ch8Cpu->pc += 2;
                     }
                     break;
                 }
                 case 0xA1: {
                     if (state->keyStates[x] != keyState::PRESSED) {
-                        pc += 2;
+                        ch8Cpu->pc += 2;
                     }
                     break;
                 }
@@ -504,51 +505,51 @@ bool runInstruction(uint16_t instruction, systemState* state) {
             uint8_t x = NIBBLE_2(instruction);
             switch (op) {
                 case 0x07: { // LD Vx DT
-                    registers[x] = delay_timer;
+                    ch8Cpu->registers[x] = ch8Cpu->delay_timer;
                     break;
                 }
                 case 0x0A: {
                     for (uint8_t i = 0; i < 16; ++i) {
                         if (state->keyStates[i] == keyState::RELEASED) {
-                            registers[x] = i;
+                            ch8Cpu->registers[x] = i;
                             return true;
                         }
                     }
                     return false;
                 }
                 case 0x15: {
-                    delay_timer = registers[x];
+                    ch8Cpu->delay_timer = ch8Cpu->registers[x];
                     break;
                 }
                 case 0x18: {
-                    sound_timer = registers[x];
+                    ch8Cpu->sound_timer = ch8Cpu->registers[x];
                     break;
                 }
                 case 0x1E: {
-                    index += registers[x];
+                    ch8Cpu->index += ch8Cpu->registers[x];
                     break;
                 }
                 case 0x29: {
-                    index = (registers[x] & 0x0F) * 5;
+                    ch8Cpu->index = (ch8Cpu->registers[x] & 0x0F) * 5;
                     break;
                 }
                 case 0x33: {
                     // TODO: check this, BCD notation
-                    ram[index] = registers[x] / 100;
-                    ram[index+1] = (registers[x] / 10) % 10;
-                    ram[index+2] = registers[x] % 10;
+                    ch8Cpu->ram[ch8Cpu->index] = ch8Cpu->registers[x] / 100;
+                    ch8Cpu->ram[ch8Cpu->index+1] = (ch8Cpu->registers[x] / 10) % 10;
+                    ch8Cpu->ram[ch8Cpu->index+2] = ch8Cpu->registers[x] % 10;
                     break;
                 }
                     // these two have different behavior depending on version of rom
                 case 0x55: { // LD [I], Vx
                     for (uint8_t i = 0; i <= x; ++i) {
-                        ram[index + i] = registers[i];
+                        ch8Cpu->ram[ch8Cpu->index + i] = ch8Cpu->registers[i];
                     }
                     break;
                 }
                 case 0x65: { // LD Vx, [i]
                     for (uint8_t i = 0; i <= x; ++i) {
-                        registers[i] = ram[index + i];
+                        ch8Cpu->registers[i] = ch8Cpu->ram[ch8Cpu->index + i];
                     }
                     break;
                 }
@@ -588,13 +589,14 @@ int main(int argc, char *argv[]) {
     ImGui_ImplSDL2_InitForSDLRenderer(gWindow, gRenderer);
     ImGui_ImplSDLRenderer_Init(gRenderer);
 
-
+    cpu ch8Cpu = {};
+    ch8Cpu.pc = 0x200;
     systemState state = {};
     uint16_t instruction;
     int debug_count = 0;
     srand(time(NULL)); // TODO: check what passing in NULL does
 
-    if (loadProgramToRam() < 0) {
+    if (loadProgramToRam(&ch8Cpu) < 0) {
         std::printf("Failed to load rom. Exiting.\n");
         return 1;
     };
@@ -619,12 +621,12 @@ int main(int argc, char *argv[]) {
             handleQueuedEvents(&state);
 
             // fetch instruction
-            instruction = ((uint16_t)(ram[pc]) << 8) | ((uint16_t)(ram[pc+1]));
+            instruction = ((uint16_t)(ch8Cpu.ram[ch8Cpu.pc]) << 8) | ((uint16_t)(ch8Cpu.ram[ch8Cpu.pc+1]));
             // printf("ins: 0x%04X\n", instruction);
             debug_count++;
             // execute instruction
-            if (runInstruction(instruction, &state)) {
-                pc += 2;
+            if (runInstruction(instruction, &state, &ch8Cpu)) {
+                ch8Cpu.pc += 2;
             }
 
             // return released key states back to idle
@@ -635,12 +637,12 @@ int main(int argc, char *argv[]) {
             }
         }
         // printf("delay timer: %d\n", delay_timer);
-        if (delay_timer > 0) {
-            delay_timer--;
+        if (ch8Cpu.delay_timer > 0) {
+            ch8Cpu.delay_timer--;
         }
-        if (sound_timer > 0) {
+        if (ch8Cpu.sound_timer > 0) {
             Mix_PlayChannel(1, gTone, 0);
-            sound_timer--;
+            ch8Cpu.sound_timer--;
         }
 
         {
@@ -678,7 +680,7 @@ int main(int argc, char *argv[]) {
         SDL_Texture* scene;
         {
             ImGui::Begin(INPUT_ROM.c_str());
-            scene = updateWindow();
+            scene = updateWindow(&ch8Cpu);
             ImVec2 uv_min = ImVec2(0.0f, 0.0f);                 // Top-left
             ImVec2 uv_max = ImVec2(1.0f, 1.0f);                 // Lower-right
             ImVec4 tint_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);   // No tint
@@ -696,7 +698,7 @@ int main(int argc, char *argv[]) {
     }
     std::chrono::nanoseconds elapsed = std::chrono::steady_clock::now() - debugTime;
     printf("%d instructions in %lld nanoseconds\n", debug_count, elapsed.count());
-    writeDisplayStateToFile();
+    writeDisplayStateToFile(&ch8Cpu);
     close();
     return 0;
 }
