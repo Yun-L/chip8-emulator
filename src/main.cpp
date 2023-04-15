@@ -13,17 +13,7 @@
 
 // TODO: replace with cli arg
 // TODO: fix relative paths, this is relative to working dir, not executable
-// std::string INPUT_ROM = "../data/IBM Logo.ch8";
-// std::string INPUT_ROM = "../data/ibm_logo_loop.ch8";
-// std::string INPUT_ROM = "../data/test_opcode.ch8";
-// std::string INPUT_ROM = "../data/bc_test.ch8";
-// std::string INPUT_ROM = "../data/keyboard_test.ch8";
-// std::string INPUT_ROM = "../data/Chip8 Picture.ch8";
-// std::string INPUT_ROM = "../data/Airplane.ch8";
-// std::string INPUT_ROM = "../data/Addition Problems [Paul C. Moews].ch8";
-std::string INPUT_ROM = "../data/Jumping X and O [Harry Kleinberg, 1977].ch8";
-// std::string INPUT_ROM = "../data/Delay Timer Test [Matthew Mikolay, 2010].ch8";
-// std::string INPUT_ROM = "../data/Clock Program [Bill Fisher, 1981].ch8";
+
 // WCHAR modulePath[512];
 Mix_Chunk *gTone = NULL;
 
@@ -165,16 +155,16 @@ void writeDisplayStateToFile(cpu *ch8Cpu) {
 }
 
 // TODO: validate, rom is not too big, handle error codes, harden
-int loadProgramToRam(cpu *ch8Cpu) {
+int loadProgramToRam(cpu *ch8Cpu, const char *romPath) {
     HANDLE hFile = CreateFileA(
-        INPUT_ROM.c_str(),
+        romPath,
         GENERIC_READ,
         FILE_SHARE_READ,
         NULL,
         OPEN_EXISTING,
         FILE_ATTRIBUTE_NORMAL,
         NULL);
-    printf("file opened: %s\n", INPUT_ROM.c_str());
+    printf("file opened: %s\n", romPath);
 
     LARGE_INTEGER fileNumBytes = {0};
     if (GetFileSizeEx(hFile, &fileNumBytes) < 0) {
@@ -259,18 +249,51 @@ int main(int argc, char *argv[]) {
     int debug_count = 0;
     srand(time(NULL)); // TODO: check what passing in NULL does
 
-    if (loadProgramToRam(&ch8Cpu) < 0) {
+    int err = 0;
+    uint64_t performanceFreq = SDL_GetPerformanceFrequency();
+    uint64_t timeLoopPrev = SDL_GetPerformanceCounter();
+    uint64_t timeLoopCurr;
+    uint64_t debugTimer = timeLoopPrev;
+    double deltaSeconds;
+
+
+    // GUI state vars
+    bool emulatorRunning = false;
+    bool emulatorPause = false;
+    bool emulatorStep = false;
+    const char* romPaths[] = {
+        "../data/IBM Logo.ch8",
+        "../data/ibm_logo_loop.ch8",
+        "../data/test_opcode.ch8",
+        "../data/bc_test.ch8",
+        "../data/keyboard_test.ch8",
+        "../data/Chip8 Picture.ch8",
+        "../data/Airplane.ch8",
+        "../data/Tank.ch8",
+        "../data/Addition Problems [Paul C. Moews].ch8",
+        "../data/Jumping X and O [Harry Kleinberg, 1977].ch8",
+        "../data/Delay Timer Test [Matthew Mikolay, 2010].ch8",
+        "../data/Clock Program [Bill Fisher, 1981].ch8",
+        "../data/Life [GV Samways, 1980].ch8",
+        "../data/Astro Dodge [Revival Studios, 2008].ch8",
+        "../data/Blitz [David Winter].ch8",
+        "../data/Cave.ch8",
+        "../data/Animal Race [Brian Astle].ch8",
+        "../data/Keypad Test [Hap, 2006].ch8",
+        "../data/Minimal game [Revival Studios, 2007].ch8",
+        "../data/Random Number Test [Matthew Mikolay, 2010].ch8",
+        "../data/Division Test [Sergey Naydenov, 2010].ch8",
+        "../data/Tron.ch8",
+        "../data/chip8-test-rom-with-audio.ch8"
+    };
+    static int selected_rom_idx = 0;
+
+
+    if (loadProgramToRam(&ch8Cpu, romPaths[selected_rom_idx]) < 0) {
         std::printf("Failed to load rom. Exiting.\n");
         return 1;
     };
 
-    int err = 0;
-    std::chrono::steady_clock::time_point debugTime = std::chrono::steady_clock::now();
-
-    uint64_t performanceFreq = SDL_GetPerformanceFrequency();
-    uint64_t timeLoopPrev = SDL_GetPerformanceCounter();
-    uint64_t timeLoopCurr;
-    double deltaSeconds;
 
     while (!state.quit && err == 0) {
 
@@ -307,28 +330,17 @@ int main(int argc, char *argv[]) {
             ch8Cpu.sound_timer--;
         }
 
+        ImGui_ImplSDLRenderer_NewFrame();
+        ImGui_ImplSDL2_NewFrame();
+        ImGui::NewFrame();
+
+        // WINDOW: Hello World
         {
-            SDL_Rect leftViewport;
-            leftViewport.x = SCREEN_WIDTH / 2;
-            leftViewport.y = 0;
-            leftViewport.w = SCREEN_WIDTH / 2;
-            leftViewport.h = SCREEN_HEIGHT;
-            SDL_RenderSetViewport(gRenderer, &leftViewport);
-
-            ImGui_ImplSDLRenderer_NewFrame();
-            ImGui_ImplSDL2_NewFrame();
-            ImGui::NewFrame();
-
-
             static float f = 0.0f;
             static int counter = 0;
-            ImVec2 myVec2(0,0);
 
-            ImGui::SetNextWindowPos(myVec2);
-            ImGui::Begin("Hello, world!", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);                          // Create a window called "Hello, world!" and append into it.
-
+            ImGui::Begin("Hello, world!", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);                          // Create a window called "Hello, world!" and append into it.
             ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-
             ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
             ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
 
@@ -336,12 +348,72 @@ int main(int argc, char *argv[]) {
                 counter++;
             ImGui::SameLine();
             ImGui::Text("counter = %d", counter);
-            //ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
             ImGui::End();
         }
+
+        // WINDOW: ROM Selection
+        {
+            // TODO replace with actual filelist fetching, replace 'romPaths'
+            ImGui::Begin("Rom Browser", NULL);
+            if (ImGui::BeginListBox("##roms", ImVec2(-FLT_MIN, 0))) {
+                for (int n = 0; n < IM_ARRAYSIZE(romPaths); ++n) {
+                    const bool is_selected = (selected_rom_idx == 0);
+                    if (ImGui::Selectable(romPaths[n], is_selected)) {
+                        selected_rom_idx = n;
+                    }
+
+                    if (is_selected) {
+                        ImGui::SetItemDefaultFocus();
+                    }
+                }
+                ImGui::EndListBox();
+            }
+            ImGui::End();
+        }
+
+        // EMULATOR WINDOW
         SDL_Texture* scene;
         {
-            ImGui::Begin(INPUT_ROM.c_str());
+            ImGui::Begin(romPaths[selected_rom_idx], NULL,
+                         //ImGuiWindowFlags_NoMove |
+                         ImGuiWindowFlags_NoResize |
+                         ImGuiWindowFlags_NoScrollbar |
+                         ImGuiWindowFlags_NoScrollWithMouse |
+                         ImGuiWindowFlags_NoCollapse);
+            // control bar
+            static bool started = false;
+            {
+                ImVec2 controllerSize(0, 25);
+                ImGui::BeginChild(
+                    "Emulator Control Bar",
+                    controllerSize,
+                    false,
+                    ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize
+                );
+                ImGui::BeginDisabled(started);
+                if (ImGui::Button("Start")) {
+                    started = true;
+                }
+                ImGui::SameLine();
+                ImGui::EndDisabled();
+                if (started) {
+                    if (ImGui::Button("Stop")) {
+                        started = false;
+                    }
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Step")) {
+                    started = false;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Pause")) {
+                    started = false;
+                }
+                ImGui::EndChild();
+            }
+
+            // emulator display
             scene = updateWindow(&ch8Cpu);
             ImVec2 uv_min = ImVec2(0.0f, 0.0f);                 // Top-left
             ImVec2 uv_max = ImVec2(1.0f, 1.0f);                 // Lower-right
@@ -350,6 +422,11 @@ int main(int argc, char *argv[]) {
             ImGui::Image(scene, ImVec2(SCREEN_WIDTH/2, SCREEN_HEIGHT/2), uv_min, uv_max, tint_col, border_col);
             ImGui::End();
         }
+
+        // uncomment to get example functionality
+        // ImGui::ShowDemoWindow();;
+
+
         ImGui::Render();
         SDL_RenderSetScale(gRenderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
         SDL_SetRenderDrawColor(gRenderer, (Uint8)(clear_color.x * 255), (Uint8)(clear_color.y * 255), (Uint8)(clear_color.z * 255), (Uint8)(clear_color.w * 255));
@@ -358,8 +435,8 @@ int main(int argc, char *argv[]) {
         SDL_RenderPresent(gRenderer);
         SDL_DestroyTexture(scene);
     }
-    std::chrono::nanoseconds elapsed = std::chrono::steady_clock::now() - debugTime;
-    printf("%d instructions in %lld nanoseconds\n", debug_count, elapsed.count());
+    double elapsed = (double)(SDL_GetPerformanceCounter() - debugTimer)/performanceFreq;
+    printf("%d instructions in %lf nanoseconds\n", debug_count, elapsed);
     writeDisplayStateToFile(&ch8Cpu);
     close();
     return 0;
