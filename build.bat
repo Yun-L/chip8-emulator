@@ -6,12 +6,14 @@ cl /I ..\extern\SDL2-2.24.1\include\ ^
    /I ..\extern\SDL2_mixer-2.6.3\include\ ^
    /I ..\extern\imgui\ ^
    /Zi ..\src\main.cpp ^
+   ..\src\chip8_emulator.cpp ^
    ..\extern\imgui\imgui.cpp ^
    ..\extern\imgui\imgui_impl_sdlrenderer.cpp ^
    ..\extern\imgui\imgui_impl_sdl2.cpp ^
    ..\extern\imgui\imgui_tables.cpp ^
    ..\extern\imgui\imgui_widgets.cpp ^
    ..\extern\imgui\imgui_draw.cpp ^
+   ..\extern\imgui\imgui_demo.cpp ^
 /link ^
    /DEBUG:FULL ^
    /LIBPATH:..\extern\SDL2-2.24.1\lib\x64\ ^
